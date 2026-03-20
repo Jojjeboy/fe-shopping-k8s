@@ -10,22 +10,67 @@ interface Item {
   purchased: boolean
 }
 
-const items = ref<Item[]>([])
+const items = ref([])
+const newItemName = ref('')
+const loading = ref(false)
 
+const API_URL = 'http://localhost:5001/api/items'
+
+// Hämta listan (GET)
 const fetchItems = async () => {
+  loading.ref = true
   try {
-    // Notera: Vi anropar 5001 eftersom din webbläsare körs på din Mac
-    const response = await fetch('http://localhost:5001/api/items')
-    const data = await response.json()
-    items.value = data
-  } catch (error) {
-    console.error("Kunde inte hämta data:", error)
+    const res = await fetch(API_URL)
+    items.value = await res.json()
+  } catch (err) {
+    console.error("Kunde inte hämta data", err)
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchItems()
-})
+// Lägg till (POST)
+const addItem = async () => {
+  if (!newItemName.value.trim()) return
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item: newItemName.value, category: 'Allmänt' })
+    })
+    newItemName.value = ''
+    await fetchItems()
+  } catch (err) {
+    console.error("Fel vid tillägg", err)
+  }
+}
+
+// Markera som köpt/ej köpt (PATCH)
+const toggleStatus = async (item) => {
+  try {
+    await fetch(`${API_URL}/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchased: !item.purchased })
+    })
+    await fetchItems()
+  } catch (err) {
+    console.error("Fel vid uppdatering", err)
+  }
+}
+
+// Ta bort (DELETE)
+const removeItem = async (id) => {
+  try {
+    await fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+    await fetchItems()
+  } catch (err) {
+    console.error("Fel vid radering", err)
+  }
+}
+
+onMounted(fetchItems)
 </script>
 
 <template>
@@ -43,18 +88,35 @@ onMounted(() => {
   </header>
 
   <main>
-    <div>
-    <h1>Min Inköpslista</h1>
-    <ul>
-      <li v-for="item in items" :key="item.id">
-        {{ item.item }} - {{ item.purchased ? 'Köpt' : 'Att köpa' }}
+    <div class="shopping-list">
+    <h1>Inköpslista</h1>
+
+    <div class="input-group">
+      <input 
+        v-model="newItemName" 
+        @keyup.enter="addItem" 
+        placeholder="Vad behöver vi handla?" 
+      />
+      <button @click="addItem">Lägg till</button>
+    </div>
+
+    <div v-if="loading">Laddar...</div>
+
+    <ul v-else>
+      <li v-for="item in items" :key="item.id" :class="{ purchased: item.purchased }">
+        <span class="item-text" @click="toggleStatus(item)">
+          {{ item.item }}
+        </span>
+        <button class="delete-btn" @click="removeItem(item.id)">Ta bort</button>
       </li>
     </ul>
-    </div>
+  </div>
   </main>
 
   <RouterView />
 </template>
+
+
 
 <style scoped>
 header {
@@ -117,5 +179,47 @@ nav a:first-of-type {
     padding: 1rem 0;
     margin-top: 1rem;
   }
+}
+
+.shopping-list {
+  max-width: 400px;
+  margin: 2rem auto;
+  font-family: sans-serif;
+}
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+input {
+  flex-grow: 1;
+  padding: 8px;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+.item-text {
+  cursor: pointer;
+  flex-grow: 1;
+}
+.purchased .item-text {
+  text-decoration: line-through;
+  color: #888;
+}
+.delete-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>
