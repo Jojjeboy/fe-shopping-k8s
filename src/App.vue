@@ -1,6 +1,31 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import HelloWorld from './components/HelloWorld.vue'
+
+interface Item {
+  id: string | number
+  item: string,
+  category: string,
+  purchased: boolean
+}
+
+const items = ref<Item[]>([])
+
+const fetchItems = async () => {
+  try {
+    // Notera: Vi anropar 5001 eftersom din webbläsare körs på din Mac
+    const response = await fetch('http://localhost:5001/api/items')
+    const data = await response.json()
+    items.value = data
+  } catch (error) {
+    console.error("Kunde inte hämta data:", error)
+  }
+}
+
+onMounted(() => {
+  fetchItems()
+})
 </script>
 
 <template>
@@ -16,6 +41,17 @@ import HelloWorld from './components/HelloWorld.vue'
       </nav>
     </div>
   </header>
+
+  <main>
+    <div>
+    <h1>Min Inköpslista</h1>
+    <ul>
+      <li v-for="item in items" :key="item.id">
+        {{ item.item }} - {{ item.purchased ? 'Köpt' : 'Att köpa' }}
+      </li>
+    </ul>
+    </div>
+  </main>
 
   <RouterView />
 </template>
