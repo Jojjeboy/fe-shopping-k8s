@@ -1,0 +1,14 @@
+FROM node:lts-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+# Vi kopierar koden, men vi kommer "skriva över" den med en volym sen
+COPY . .
+
+EXPOSE 8080
+
+# Kör dev-servern istället för att bygga statiska filer
+CMD ["npm", "run", "dev"]
